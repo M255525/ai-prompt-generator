@@ -488,7 +488,11 @@
         var segs = parseInt(v.segments, 10);
         if(!segs || segs < 1) segs = 3;
         var matched = FRAMEWORKS.video.presets.find(function(p){ return p.topic === v.topic; });
-        var base = (matched && matched.example) || FRAMEWORKS.video.defaultExample;
+        // 有套用內建範例才附格式說明＋範例行；自行輸入主題時只給最簡單的一句話，不硬塞不相關的範例
+        if(!matched){
+          return '「' + v.topic + '」的短影音口白腳本，共 ' + segs + ' 段';
+        }
+        var base = matched.example;
         // 範例行數務必等於使用者填的段數，避免「共 N 段」跟範例只有 3 行這種數字對不上的狀況
         var example = [];
         for(var i = 0; i < segs; i++){ example.push(base[i % base.length]); }
@@ -497,11 +501,6 @@
         example.forEach(function(l){ lines.push(l); });
         return lines.join('\n');
       },
-      defaultExample: [
-        '每一杯咖啡都是一場旅行 | barista pouring coffee',
-        '嚴選豆子每日新鮮烘焙 | coffee beans roasting',
-        '歡迎光臨轉角的香氣 | cozy coffee shop'
-      ],
       presets: [
         {name:'咖啡店開幕宣傳', topic:'手沖咖啡店開幕宣傳', segments:'3', example:[
           '每一杯咖啡都是一場旅行 | barista pouring coffee',
