@@ -386,14 +386,20 @@
       if (!resp.ok) throw new Error('授權伺服器回應異常（' + resp.status + '）');
       return resp.text();
     }).then(function (text) {
+      var parsed;
       try {
-        return JSON.parse(text);
+        parsed = JSON.parse(text);
       } catch (e) {
-        // 剛啟動的 Apps Script 偶爾會在轉址過程回傳異常的中繼頁面（非合法 JSON），
-        // 重試一次通常就會拿到正常回應，不需要把這個暫時性狀況攤給使用者看
-        if (attempt < 2) return checkLicense(serial, attempt + 1);
+        parsed = null;
+      }
+      // 剛啟動的 Apps Script 偶爾會在轉址過程回傳異常的中繼頁面（非合法 JSON），
+      // 或甚至錯把 doGet 健康檢查的回應內容送過來（合法 JSON，但沒有 valid 欄位）——
+      // 兩種狀況都是暫時性的，重試一次通常就會拿到正常的序號驗證回應
+      if (!parsed || typeof parsed.valid !== 'boolean') {
+        if (attempt < 3) return checkLicense(serial, attempt + 1);
         throw new Error('授權伺服器回應異常，請稍後再試一次');
       }
+      return parsed;
     });
   }
 
