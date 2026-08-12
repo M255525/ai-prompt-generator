@@ -481,17 +481,34 @@
       template: function(v){
         var segs = parseInt(v.segments, 10);
         if(!segs || segs < 1) segs = 3;
+        var matched = FRAMEWORKS.video.presets.find(function(p){ return p.topic === v.topic; });
+        var example = (matched && matched.example) || FRAMEWORKS.video.defaultExample;
         var lines = [];
         lines.push('請寫一份關於「' + v.topic + '」的短影音口白腳本，共 ' + segs + ' 段，每段一行，格式為「中文旁白 | 英文搜尋關鍵字」，例如：');
-        lines.push('每一杯咖啡都是一場旅行 | barista pouring coffee');
-        lines.push('嚴選豆子每日新鮮烘焙 | coffee beans roasting');
-        lines.push('歡迎光臨轉角的香氣 | cozy coffee shop');
+        example.forEach(function(l){ lines.push(l); });
         return lines.join('\n');
       },
+      defaultExample: [
+        '每一杯咖啡都是一場旅行 | barista pouring coffee',
+        '嚴選豆子每日新鮮烘焙 | coffee beans roasting',
+        '歡迎光臨轉角的香氣 | cozy coffee shop'
+      ],
       presets: [
-        {name:'咖啡店開幕宣傳', topic:'手沖咖啡店開幕宣傳', segments:'3'},
-        {name:'線上課程招生', topic:'AI 應用線上課程招生', segments:'5'},
-        {name:'手作甜點新品上市', topic:'手作甜點品牌新品上市', segments:'4'}
+        {name:'咖啡店開幕宣傳', topic:'手沖咖啡店開幕宣傳', segments:'3', example:[
+          '每一杯咖啡都是一場旅行 | barista pouring coffee',
+          '嚴選豆子每日新鮮烘焙 | coffee beans roasting',
+          '歡迎光臨轉角的香氣 | cozy coffee shop'
+        ]},
+        {name:'線上課程招生', topic:'AI 應用線上課程招生', segments:'5', example:[
+          '想讓 AI 成為你的超能力嗎 | futuristic technology',
+          '我們的課程從零開始帶你上手 | classroom learning computer',
+          '現在就報名加入我們 | celebration success team'
+        ]},
+        {name:'手作甜點新品上市', topic:'手作甜點品牌新品上市', segments:'4', example:[
+          '剛出爐的甜點藏著幸福的味道 | fresh pastry bakery',
+          '每一口都是職人手作的堅持 | baker decorating dessert',
+          '新品上市限量開賣中 | dessert display shop'
+        ]}
       ]
     },
     tag: {
