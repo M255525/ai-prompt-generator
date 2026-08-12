@@ -473,11 +473,10 @@
   var FRAMEWORKS = {
     video: {
       label: 'AI 影音工坊框架', shortEn: 'VIDEO SCRIPT', shortZh: '影音工坊',
-      hint: '填主題／段數／補充說明，組成可直接貼進 ai-video-studio「01 腳本」欄位的逐行提示詞規格（格式：中文旁白｜英文搜尋關鍵字）。',
+      hint: '填主題／段數，組成可直接貼進 ai-video-studio「01 腳本」欄位的逐行提示詞規格（格式：中文旁白｜英文搜尋關鍵字）。',
       fields: [
         {key:'topic', label:'主題', type:'text', placeholder:'例：手沖咖啡店開幕宣傳'},
-        {key:'segments', label:'幾段', type:'number', placeholder:'3', hint:'要產生幾行畫面段落，建議 3～8'},
-        {key:'notes', label:'補充說明', type:'textarea', placeholder:'例：走溫馨手作風格，語氣親切、避免太商業化（選填）'}
+        {key:'segments', label:'幾段', type:'number', placeholder:'3', hint:'要產生幾行畫面段落，建議 3～8'}
       ],
       template: function(v){
         var segs = parseInt(v.segments, 10);
@@ -487,13 +486,12 @@
         lines.push('每一杯咖啡都是一場旅行 | barista pouring coffee');
         lines.push('嚴選豆子每日新鮮烘焙 | coffee beans roasting');
         lines.push('歡迎光臨轉角的香氣 | cozy coffee shop');
-        if(v.notes) lines.push('補充說明：' + v.notes);
         return lines.join('\n');
       },
       presets: [
-        {name:'咖啡店開幕宣傳', topic:'手沖咖啡店開幕宣傳', segments:'3', notes:'走溫馨手作風格，語氣親切、避免太商業化'},
-        {name:'線上課程招生', topic:'AI 應用線上課程招生', segments:'5', notes:'強調實作導向、適合零基礎學員，語氣要有行動呼籲'},
-        {name:'手作甜點新品上市', topic:'手作甜點品牌新品上市', segments:'4', notes:'畫面偏浪漫唯美，旁白可以帶一點故事感'}
+        {name:'咖啡店開幕宣傳', topic:'手沖咖啡店開幕宣傳', segments:'3'},
+        {name:'線上課程招生', topic:'AI 應用線上課程招生', segments:'5'},
+        {name:'手作甜點新品上市', topic:'手作甜點品牌新品上市', segments:'4'}
       ]
     },
     tag: {
