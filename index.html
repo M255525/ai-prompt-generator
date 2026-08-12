@@ -482,7 +482,10 @@
         var segs = parseInt(v.segments, 10);
         if(!segs || segs < 1) segs = 3;
         var matched = FRAMEWORKS.video.presets.find(function(p){ return p.topic === v.topic; });
-        var example = (matched && matched.example) || FRAMEWORKS.video.defaultExample;
+        var base = (matched && matched.example) || FRAMEWORKS.video.defaultExample;
+        // 範例行數務必等於使用者填的段數，避免「共 N 段」跟範例只有 3 行這種數字對不上的狀況
+        var example = [];
+        for(var i = 0; i < segs; i++){ example.push(base[i % base.length]); }
         var lines = [];
         lines.push('請寫一份關於「' + v.topic + '」的短影音口白腳本，共 ' + segs + ' 段，每段一行，格式為「中文旁白 | 英文搜尋關鍵字」，例如：');
         example.forEach(function(l){ lines.push(l); });
@@ -502,10 +505,13 @@
         {name:'線上課程招生', topic:'AI 應用線上課程招生', segments:'5', example:[
           '想讓 AI 成為你的超能力嗎 | futuristic technology',
           '我們的課程從零開始帶你上手 | classroom learning computer',
+          '業界導師手把手帶你實作 | mentor teaching student',
+          '學員好評不斷持續額滿 | happy graduates celebration',
           '現在就報名加入我們 | celebration success team'
         ]},
         {name:'手作甜點新品上市', topic:'手作甜點品牌新品上市', segments:'4', example:[
           '剛出爐的甜點藏著幸福的味道 | fresh pastry bakery',
+          '嚴選天然食材純手工製作 | baking ingredients preparation',
           '每一口都是職人手作的堅持 | baker decorating dessert',
           '新品上市限量開賣中 | dessert display shop'
         ]}
