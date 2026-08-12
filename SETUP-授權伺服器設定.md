@@ -2,12 +2,11 @@
 
 這份工具（AI 提示詞產生器）在頁面一開啟就會顯示「授權序號」的鎖定畫面，**必須輸入序號並按「確認」驗證通過，才能使用整個工具**（不是只鎖某個功能）。序號需連到你的 Google Sheet 確認是否還在 12 個月使用期限內。這個檢查是透過 **Google Apps Script**（Google Sheet 內建、免費）架設的一支小型 API 完成的，需要你手動部署一次。部署完成後，往後每次要開放給新的使用者，只要在 Google Sheet 新增一列即可，不需要重新部署。
 
-## 第一步：建立你自己的 Google Sheet
+## 你的 Google Sheet
 
-這個工具需要一份**專屬於它自己**的 Google Sheet（不要沿用其他工具的授權表，效期與用途不同）：
+<https://docs.google.com/spreadsheets/d/1zki3fjDGGFARrglkpMSaqKpjDAdjgoU47PxR9jDXqrQ/edit>
 
-1. 到 [sheets.google.com](https://sheets.google.com) 新增一份空白試算表，取個好記的名字，例如「AI提示詞產生器 授權序號」。
-2. 在第一列填入表頭：
+這份 Sheet **專屬於這個工具**（不與其他工具的授權表共用，效期與用途不同）。表頭需要：
 
 | 序號 | 開始日期 | 結束日期 |
 |---|---|---|

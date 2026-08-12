@@ -20,7 +20,9 @@
 
 - `Code.gs` — 部署到**專屬於這個工具**的 Google Sheet 的 Apps Script 原始碼（不可沿用其他工具的授權表，效期/用途不同）：`doPost` 只做序號驗證＋首次自動啟用，`doGet` 供部署後測試。Sheet 欄位「序號／開始日期／結束日期」，`VALID_AMOUNT = 12`（月）。這不是這個資料夾裡的檔案在跑，是使用者手動複製貼到 Google Sheet 的「擴充功能 → Apps Script」編輯器裡部署成 Web App，取得網址後回填到 `index.html` 的 `LICENSE_CHECK_URL`。部署步驟見 `SETUP-授權伺服器設定.md`。
 - **這支後端只做序號驗證，不代理任何付費 API**（本工具的 LLM 串接是 BYOK，前端直連使用者自己的服務商 API，跟序號系統無關），也**不處理跑馬燈**（見下）。
-- 部署狀態：**尚未部署**。`LICENSE_CHECK_URL` 目前是空字串，序號驗證會 fail-closed 顯示「尚未設定授權伺服器網址」並保持鎖定畫面。需要使用者依 `SETUP-授權伺服器設定.md` 建立自己的 Google Sheet 並部署 Apps Script 才能實際使用。
+- 綁定的 Google Sheet：<https://docs.google.com/spreadsheets/d/1zki3fjDGGFARrglkpMSaqKpjDAdjgoU47PxR9jDXqrQ/edit>（獨立於工作區其他工具的授權表）。
+- **已完成部署（2026-08-12）**。`index.html` 的 `LICENSE_CHECK_URL` 已填入實際部署網址：`https://script.google.com/macros/s/AKfycbx-_ipM4k2Bgyqzl9DqczwVCdQhzhTn_DkbLzSqn1Yb6dc7W5KrNVKLFokZxrjg1Tl1/exec`。`doGet`／`doPost` 皆已用 curl／Node `fetch()` 驗證正常（`doPost` 對不存在的序號正確回傳 `serial_not_found`）；Sheet 目前只有表頭、尚無任何序號列，需使用者自行新增序號列才能實際測試啟用流程。
+- **部署過程踩坑**：透過聊天視窗複製貼上 `Code.gs` 到 Apps Script 編輯器出現語法錯誤（`Illegal return statement`），本機檔案 `node --check` 語法正常，確認是剪貼簿/瀏覽器貼上過程弄壞內容——改用 `clasp login` → `clasp clone <scriptId>` → 覆蓋 `Code.js` → `clasp push --force` 一次成功，跳過複製貼上。部署後第一次 `doPost` 測試曾短暫回傳 Google Drive「找不到網頁」錯誤頁，重試（間隔數秒）後恢復正常，屬新部署的暫時性延遲，非程式碼問題。
 
 ## 頂部共用跑馬燈
 
