@@ -468,6 +468,12 @@
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
   }
+  // fetch() 的 header 值只能是 ISO-8859-1（Latin-1）範圍的字元；貼上金鑰時若不小心夾帶
+  // 中文字、全形符號或其他特殊字元，瀏覽器會直接丟出難懂的底層錯誤，所以先在這裡擋掉並給清楚提示
+  function isLatin1(s){
+    for(var i = 0; i < s.length; i++){ if(s.charCodeAt(i) > 0xFF) return false; }
+    return true;
+  }
 
   /* ---------- 四種框架定義：欄位、提示詞模板、範例 ---------- */
   var FRAMEWORKS = {
@@ -882,6 +888,8 @@
 
     if(!apiKey){ report.innerHTML = '<div class="bad">請先在「API 連線設定」填入 API 金鑰</div>'; return; }
     if(!model){ report.innerHTML = '<div class="bad">請填入模型名稱</div>'; return; }
+    if(!isLatin1(apiKey)){ report.innerHTML = '<div class="bad">API 金鑰包含不可用的字元（可能複製時夾帶了多餘的符號、中文字或全形空白），請重新確認只貼上金鑰本身，前後不要有其他文字</div>'; return; }
+    if(!isLatin1(model)){ report.innerHTML = '<div class="bad">模型名稱包含不可用的字元，請確認只填入英數字模型 ID</div>'; return; }
 
     var prompt = state.assembled[state.activeType];
     if(!prompt){
@@ -902,7 +910,10 @@
       $('aiOutput').textContent = text;
       report.innerHTML = '<div class="ok">已產生內容，請自行檢查是否符合需求後再使用。</div>';
     }catch(err){
-      var msg = err.name === 'TimeoutError' ? '請求逾時（180秒），請重試或換模型' : err.message;
+      var msg;
+      if(err.name === 'TimeoutError') msg = '請求逾時（180秒），請重試或換模型';
+      else if(/ISO-8859-1|non.*code point/i.test(err.message || '')) msg = 'API 金鑰或模型名稱包含不可用的字元（可能複製時夾帶了多餘的符號或中文字），請重新確認貼上的內容只有金鑰／模型 ID 本身';
+      else msg = err.message;
       report.innerHTML = '<div class="bad">產生失敗：' + escapeHtml(msg) + '</div>';
     }finally{
       btn.disabled = false;
