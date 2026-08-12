@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 提示詞產生器 · 影音框架＋TAG／APE／CO-STAR</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --bg-alt:#0e1830;
+    --panel:#111e38;
+    --panel-raised:#16294a;
+    --line:#233457;
+    --line-soft:#1a2740;
+    --text:#e8eef8;
+    --text-dim:#93a4c3;
+    --text-faint:#5f7093;
+    --accent:#38bdf8;
+    --accent-soft:rgba(56,189,248,0.14);
+    --accent-glow:rgba(56,189,248,0.5);
+    --violet:#a78bfa;
+    --violet-soft:rgba(167,139,250,0.14);
+    --red:#f87171;
+    --font-mono:ui-monospace,"Cascadia Mono","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+    --font-sans:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);line-height:1.65;min-height:100vh;
+    background-image:
+      linear-gradient(rgba(56,189,248,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56,189,248,0.035) 1px, transparent 1px);
+    background-size:34px 34px;
+  }
+  a{color:var(--accent);}
+  ::selection{background:var(--accent);color:#04121f;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .btn{
+    font-family:var(--font-mono);font-size:13px;letter-spacing:.02em;
+    background:var(--panel-raised);color:var(--text);border:1px solid var(--line);
+    padding:9px 16px;border-radius:6px;cursor:pointer;transition:.15s;
+  }
+  .btn:hover{border-color:var(--accent);color:var(--accent);}
+  .btn.primary{background:var(--accent);color:#04121f;border-color:var(--accent);font-weight:700;}
+  .btn.primary:hover{background:#63cdfa;color:#04121f;box-shadow:0 0 16px var(--accent-glow);}
+  .btn.violet{background:var(--violet);color:#1b1330;border-color:var(--violet);font-weight:700;}
+  .btn.violet:hover{background:#bda6fc;box-shadow:0 0 16px rgba(167,139,250,.5);}
+  .btn.ghost{background:transparent;}
+  .btn.danger:hover{border-color:var(--red);color:var(--red);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn:disabled:hover{border-color:var(--line);color:var(--text);box-shadow:none;}
+
+  /* ---------- 頂部跑馬燈（沿用工作區共用授權伺服器的公告，跟本工具的序號授權是兩個獨立系統） ---------- */
+  #marqueeBar{position:fixed;top:0;left:0;right:0;height:30px;background:var(--panel);border-bottom:1px solid var(--line);z-index:2100;overflow:hidden;display:none;align-items:center}
+  #marqueeBar.show{display:flex}
+  #marqueeTrack{display:inline-block;white-space:nowrap;padding-left:100%;font-size:13px;font-weight:600;color:var(--accent);animation:marquee-scroll 30s linear infinite}
+  body.has-marquee{padding-top:30px}
+  body.has-marquee .topbar{top:30px}
+  @keyframes marquee-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* ---------- 序號授權閘門（整個工具需先驗證通過才能使用） ---------- */
+  #licenseGate{position:fixed;inset:0;background:rgba(6,10,20,.95);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px}
+  #licenseGate.hidden{display:none}
+  .gate-box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:32px;width:420px;max-width:92vw;text-align:center}
+  .gate-logo{font-size:20px;font-weight:700;margin-bottom:8px}
+  .gate-logo span{color:var(--accent)}
+  .gate-desc{font-size:13px;color:var(--text-dim);margin-bottom:20px;line-height:1.7}
+  .gate-row{display:flex;gap:8px;margin-bottom:14px}
+  .gate-row input{flex:1;min-width:0}
+  .gate-row button{flex:none}
+  .gate-status{display:block;font-size:12.5px;font-weight:600;padding:8px 10px;border-radius:8px;background:var(--bg);color:var(--text-dim)}
+  .gate-status.ok{background:var(--accent-soft);color:var(--accent)}
+  .gate-status.bad{background:rgba(248,113,113,.12);color:var(--red)}
+  .gate-status.pending{opacity:.85}
+  .gate-mini{color:var(--text-faint);font-family:var(--font-mono);font-size:12px;}
+  .gate-mini.bad{color:var(--red);font-weight:bold}
+
+  input[type=text], input[type=password], input[type=number], textarea, select{
+    width:100%;background:var(--bg-alt);color:var(--text);border:1px solid var(--line);
+    border-radius:8px;padding:10px 12px;font-family:var(--font-sans);font-size:14px;
+  }
+  textarea{min-height:76px;resize:vertical;line-height:1.6;}
+  input:focus, textarea:focus, select:focus{border-color:var(--accent);}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;padding:16px 24px;
+    border-bottom:1px solid var(--line-soft);background:linear-gradient(180deg, var(--bg-alt), var(--bg));
+    position:sticky;top:0;z-index:20;backdrop-filter:blur(6px);
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);letter-spacing:.04em;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent-glow);}
+  .brand strong{font-size:15px;font-weight:700;}
+  .topbar nav a{font-family:var(--font-mono);font-size:13px;color:var(--text-dim);text-decoration:none;border:1px solid var(--line);padding:7px 14px;border-radius:6px;transition:.15s;}
+  .topbar nav a:hover{color:var(--accent);border-color:var(--accent);}
+
+  /* ---------- hero ---------- */
+  .hero{padding:48px 24px 30px;text-align:center;border-bottom:1px solid var(--line-soft);background:linear-gradient(180deg, var(--bg-alt), var(--bg));}
+  .hero .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.3em;color:var(--text-faint);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-size:clamp(26px,4.6vw,40px);margin:0 0 12px;font-weight:800;letter-spacing:-.01em;}
+  .hero h1 .accent{color:var(--accent);}
+  .hero p.lead{max-width:600px;margin:0 auto 26px;color:var(--text-dim);font-size:15.5px;}
+
+  .type-tabs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;max-width:820px;margin:0 auto;}
+  .type-tab{
+    font-family:var(--font-mono);font-size:13px;background:var(--panel);color:var(--text-dim);
+    border:1px solid var(--line);padding:10px 16px;border-radius:8px;cursor:pointer;transition:.15s;text-align:left;
+  }
+  .type-tab .tt-en{display:block;font-size:11px;color:var(--text-faint);letter-spacing:.06em;}
+  .type-tab .tt-zh{display:block;font-weight:700;color:var(--text);margin-top:2px;}
+  .type-tab:hover{border-color:var(--accent);}
+  .type-tab.active{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent-soft);}
+  .type-tab.active .tt-zh{color:var(--accent);}
+
+  main{max-width:820px;margin:0 auto;padding:34px 20px 60px;display:flex;flex-direction:column;gap:22px;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .panel-title{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;}
+  .panel-title .badge{
+    width:28px;height:28px;border-radius:8px;background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:13px;font-weight:800;
+  }
+  .panel-hint{font-size:12.5px;color:var(--text-faint);margin:0 0 16px;}
+
+  .preset-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .preset-row label{font-family:var(--font-mono);font-size:12px;color:var(--text-faint);}
+  .preset-row select{flex:1;min-width:180px;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:6px;}
+  .field .field-hint{font-size:12px;color:var(--text-faint);margin:4px 0 0;}
+
+  .output-box{
+    background:var(--bg-alt);border:1px solid var(--line);border-radius:8px;padding:14px;
+    white-space:pre-wrap;font-family:var(--font-mono);font-size:13px;color:var(--text);min-height:60px;line-height:1.7;
+  }
+  .output-box:empty::before{content:'（尚未產生內容）';color:var(--text-faint);font-family:var(--font-sans);}
+  .output-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+
+  .ai-panel{border-color:rgba(167,139,250,.35);}
+  .ai-panel .panel-title .badge{background:var(--violet-soft);color:var(--violet);}
+  .api-settings{margin-bottom:14px;}
+  .api-settings summary{cursor:pointer;font-family:var(--font-mono);font-size:12.5px;color:var(--text-dim);}
+  .api-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .api-grid label{grid-column:span 1;font-size:12px;color:var(--text-faint);display:block;}
+  .api-grid label.full{grid-column:1 / -1;}
+  .api-note{font-size:11.5px;color:var(--text-faint);margin-top:8px;line-height:1.6;}
+  .ai-report{margin-top:10px;font-size:12.5px;}
+  .ai-report .ok{color:var(--accent);}
+  .ai-report .warn{color:#facc15;}
+  .ai-report .bad{color:var(--red);}
+
+  .save-row{display:flex;gap:10px;margin-bottom:14px;}
+  .save-row input{flex:1;}
+  .saved-empty{font-size:12.5px;color:var(--text-faint);margin:0;}
+  .saved-item{border:1px solid var(--line-soft);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;}
+  .saved-item-name{font-weight:700;font-size:13.5px;}
+  .saved-item-meta{font-size:11.5px;color:var(--text-faint);margin-top:2px;font-family:var(--font-mono);}
+  .saved-item-actions{display:flex;gap:6px;flex-wrap:wrap;}
+  .chip{font-family:var(--font-mono);font-size:11.5px;background:var(--panel-raised);color:var(--text-dim);border:1px solid var(--line);padding:5px 10px;border-radius:6px;cursor:pointer;}
+  .chip:hover{border-color:var(--accent);color:var(--accent);}
+
+  footer{max-width:820px;margin:0 auto;padding:0 20px 50px;}
+  .warn-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;font-size:12.5px;color:var(--text-dim);}
+  .warn-box strong{color:var(--text);display:block;margin-bottom:8px;font-size:13px;}
+  .warn-box ul{margin:0;padding-left:18px;}
+  .warn-box li{margin-bottom:5px;}
+  .footer-meta{max-width:820px;margin:0 auto;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--text-faint);font-family:var(--font-mono);}
+  .footer-meta a{color:var(--text-dim);}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:var(--panel-raised);border:1px solid var(--accent);color:var(--text);padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:3000;}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+
+  @media (max-width:600px){
+    .api-grid{grid-template-columns:1fr;}
+    .type-tabs{flex-direction:column;align-items:stretch;}
+  }
+</style>
+</head>
+<body>
+
+<!-- 頂部跑馬燈：獨立運作，內容抓自工作區共用的公告 Google Sheet；與下方序號授權是兩個獨立系統 -->
+<div id="marqueeBar"><div id="marqueeTrack"></div></div>
+
+<!-- 序號授權閘門：預設鎖定，驗證通過才會隱藏 -->
+<div id="licenseGate">
+  <div class="gate-box">
+    <div class="gate-logo">🖋️ AI <span>提示詞產生器</span></div>
+    <div class="gate-desc">本工具需輸入授權序號並按「確認」驗證通過後才能使用。序號自第一次驗證起提供 12 個月使用期限。</div>
+    <div class="gate-row">
+      <input type="password" id="gateSerial" placeholder="請輸入授權序號" autocomplete="off">
+      <button type="button" class="btn" id="btnGateToggle" title="顯示／隱藏序號" aria-label="顯示／隱藏序號">👁</button>
+    </div>
+    <button type="button" class="btn primary" id="btnGateConfirm" style="width:100%;margin-bottom:12px">確認</button>
+    <span id="gateStatus" class="gate-status pending">尚未驗證</span>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span><strong>AI 提示詞產生器</strong></div>
+  <nav><a href="manual.html">操作手冊</a></nav>
+</div>
+
+<div class="hero">
+  <div class="eyebrow">PROMPT FRAMEWORK GENERATOR</div>
+  <h1>選一個框架，<span class="accent">組出一份好提示詞</span></h1>
+  <p class="lead">影音工坊逐段腳本、TAG／APE／CO-STAR 通用框架，填變數即可組成結構完整的提示詞，也可以直接串接你自己的語言模型一鍵生成內容。</p>
+  <div class="type-tabs" id="typeTabs"></div>
+</div>
+
+<main>
+
+  <section class="panel" id="builderPanel">
+    <div class="panel-head">
+      <div class="panel-title"><span class="badge" id="builderBadge">▦</span><span id="builderTitle">框架</span></div>
+    </div>
+    <p class="panel-hint" id="builderHint"></p>
+
+    <div class="preset-row">
+      <label for="presetSelect">套用範例</label>
+      <select id="presetSelect"><option value="">— 選擇一個情境快速開始 —</option></select>
+      <button class="btn ghost" id="clearBtn" type="button">清空欄位</button>
+    </div>
+
+    <div id="fieldsContainer"></div>
+
+    <div class="output-actions">
+      <button class="btn primary" id="buildBtn" type="button">🔧 組成提示詞</button>
+      <button class="btn ghost" id="copyPromptBtn" type="button">複製提示詞</button>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label>組成後的提示詞</label>
+      <div class="output-box" id="promptOutput"></div>
+    </div>
+  </section>
+
+  <section class="panel ai-panel">
+    <div class="panel-head">
+      <div class="panel-title"><span class="badge">AI</span>送給 AI 直接生成內容</div>
+    </div>
+    <p class="panel-hint">串接你自己的語言模型 API，把上面組成的提示詞直接送出，取得 AI 實際產生的內容（例如影音框架會直接產出可貼進 ai-video-studio「01 腳本」的逐行內容）。</p>
+
+    <details class="api-settings">
+      <summary>API 連線設定</summary>
+      <div class="api-grid">
+        <label>服務商
+          <select id="aiProvider"></select>
+        </label>
+        <label>模型
+          <input type="text" id="aiModel" placeholder="模型名稱">
+        </label>
+        <label class="full">API 金鑰
+          <input type="password" id="aiKey" placeholder="貼上你的 API Key" autocomplete="off">
+        </label>
+      </div>
+      <p class="api-note">金鑰只存在這台電腦的瀏覽器（localStorage），不會送到本工具以外的任何地方；按下「送給 AI 生成」時，組成後的提示詞會直接傳送給你選擇的服務商 API。請勿在共用電腦上填寫金鑰。</p>
+    </details>
+
+    <div class="output-actions">
+      <button class="btn violet" id="aiGenerateBtn" type="button">🚀 送給 AI 直接生成</button>
+      <button class="btn ghost" id="copyAiBtn" type="button">複製 AI 結果</button>
+    </div>
+    <div id="aiReport" class="ai-report" aria-live="polite"></div>
+    <div class="field" style="margin-top:12px;">
+      <label>AI 產生結果</label>
+      <div class="output-box" id="aiOutput"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title"><span class="badge">REC</span>已儲存的提示詞</div>
+    </div>
+    <p class="panel-hint">把目前這份提示詞（含 AI 產生結果，若有）存成一筆有名字的紀錄，留在這台瀏覽器裡；需要檔案再從清單裡個別下載。</p>
+    <div class="save-row">
+      <input type="text" id="filenameInput" aria-label="儲存名稱" maxlength="80" spellcheck="false" placeholder="幫這筆提示詞取個名字">
+      <button class="btn primary" id="saveBtn" type="button">儲存</button>
+    </div>
+    <div id="savedList"></div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="warn-box">
+    <strong>使用警語</strong>
+    <ul>
+      <li>本工具產生的是「提示詞架構」與 AI 生成內容，請自行檢查是否符合你所使用之 AI 服務的條款與政策。</li>
+      <li>請勿在任何欄位輸入真實個資、機密資料或受著作權保護的他人內容——欄位資料只存在你自己瀏覽器的 localStorage，不會上傳到任何伺服器，但送出給 AI 服務後的隱私仍由該服務條款規範。</li>
+      <li>「送給 AI 直接生成」需要你自行填入 API 金鑰，該金鑰只存在你的瀏覽器，按下產生時會直接連線到你選擇的服務商，本工具不會經手或保存金鑰，也不會向你收取任何 API 費用——實際費用依你與該服務商的方案計算。</li>
+      <li>AI 生成內容可能有誤，使用前請自行查證；本工具與創作者不對後續 AI 輸出結果負責。</li>
+      <li>僅供教學、課程及個人使用，禁止未經授權公開發布、販售或商業化使用。</li>
+    </ul>
+  </div>
+  <div class="footer-meta">
+    <span>製作：Mark Tsai｜<a href="mailto:tsaimark@gmail.com">tsaimark@gmail.com</a></span>
+    <a href="manual.html">操作手冊 →</a>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ================= 頂部跑馬燈（獨立運作，跟下方主程式邏輯無關；共用工作區既有的公告 Google Sheet） ================= */
+(function () {
+  'use strict';
+  var MARQUEE_CHECK_URL = "https://script.google.com/macros/s/AKfycbwKX0DNNbY8y4nf90BFTHtxgfqJcHHcZasRrgycl4QAe52_hkjMWSkYk4xOsqU-JPCROw/exec";
+  var STORAGE_KEY = 'promptGenMarquee';
+  var REFRESH_MS = 20 * 60 * 1000;
+
+  var bar = document.getElementById('marqueeBar');
+  var track = document.getElementById('marqueeTrack');
+
+  function loadCache() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function saveCache(items) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch (e) {}
+  }
+  function render(items) {
+    if (!items || !items.length) return;
+    var joined = items.join('　★　');
+    track.textContent = joined + '　★　' + joined;
+    bar.classList.add('show');
+    document.body.classList.add('has-marquee');
+    var width = track.scrollWidth / 2;
+    track.style.animationDuration = Math.max(width / 80, 10) + 's';
+  }
+  function fetchMarquee() {
+    fetch(MARQUEE_CHECK_URL, { method: 'POST', body: JSON.stringify({ serial: '' }) })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && Array.isArray(data.marquee) && data.marquee.length) {
+          saveCache(data.marquee);
+          render(data.marquee);
+        }
+      })
+      .catch(function () {});
+  }
+
+  render(loadCache());
+  fetchMarquee();
+  setInterval(fetchMarquee, REFRESH_MS);
+})();
+
+/* ================= 序號授權閘門（獨立運作，鎖定整個工具；跟下方主程式邏輯無關） ================= */
+(function () {
+  'use strict';
+  var LICENSE_CHECK_URL = "";   // 部署 Code.gs 之後把 Apps Script 網址填在這裡
+  var STORAGE_KEY = 'promptGenSerial';
+  var RECHECK_MS = 20 * 60 * 1000;
+
+  var gate = document.getElementById('licenseGate');
+  var input = document.getElementById('gateSerial');
+  var toggleBtn = document.getElementById('btnGateToggle');
+  var confirmBtn = document.getElementById('btnGateConfirm');
+  var statusEl = document.getElementById('gateStatus');
+
+  function loadSerial() { return localStorage.getItem(STORAGE_KEY) || ''; }
+  function saveSerial(s) { localStorage.setItem(STORAGE_KEY, s); }
+
+  var REASON_LABEL = {
+    missing_serial: '請輸入授權序號',
+    serial_not_found: '查無此授權序號，請確認輸入是否正確',
+    expired: '此序號已逾使用期限',
+    network_error: '無法連線授權伺服器，請檢查網路連線',
+    server_error: '授權伺服器發生錯誤，請稍後再試'
+  };
+
+  function checkLicense(serial) {
+    if (!LICENSE_CHECK_URL) {
+      return Promise.reject(new Error('尚未設定授權伺服器網址，請聯繫工具提供者'));
+    }
+    return fetch(LICENSE_CHECK_URL, {
+      method: 'POST',
+      body: JSON.stringify({ serial: serial }),
+      signal: AbortSignal.timeout(20000)
+    }).catch(function (err) {
+      throw new Error(err.name === 'TimeoutError' ? '授權伺服器連線逾時，請檢查網路連線後再試一次' : '無法連線授權伺服器，請檢查網路連線');
+    }).then(function (resp) {
+      if (!resp.ok) throw new Error('授權伺服器回應異常（' + resp.status + '）');
+      return resp.json();
+    });
+  }
+
+  function fmtDays(license) {
+    if (!license.expiresAt) return '';
+    var expireStr = new Date(license.expiresAt).toLocaleDateString();
+    var days = Math.ceil((new Date(license.expiresAt) - new Date()) / 86400000);
+    return '剩餘 ' + Math.max(days, 0) + ' 天可用（至 ' + expireStr + '）';
+  }
+
+  function unlock(license) {
+    var label = fmtDays(license) || '序號有效';
+    statusEl.className = 'gate-status ok';
+    statusEl.textContent = '✓ ' + label;
+    gate.classList.add('hidden');
+  }
+
+  function lock(reasonText) {
+    statusEl.className = 'gate-status bad';
+    statusEl.textContent = '✗ ' + reasonText;
+    gate.classList.remove('hidden');
+  }
+
+  function runCheck(serial, opts) {
+    opts = opts || {};
+    if (!serial) {
+      statusEl.className = 'gate-status bad';
+      statusEl.textContent = REASON_LABEL.missing_serial;
+      return Promise.resolve({ valid: false, reason: 'missing_serial' });
+    }
+    if (!opts.silent) {
+      statusEl.className = 'gate-status pending';
+      statusEl.textContent = '驗證中…';
+    }
+    return checkLicense(serial).then(function (license) {
+      if (license.valid) unlock(license);
+      else lock(REASON_LABEL[license.reason] || license.message || '授權序號驗證失敗');
+      return license;
+    }).catch(function (err) {
+      lock(err.message);
+      return { valid: false, reason: 'network_error', message: err.message };
+    });
+  }
+
+  confirmBtn.addEventListener('click', function () {
+    var serial = input.value.trim();
+    saveSerial(serial);
+    runCheck(serial);
+  });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); confirmBtn.click(); }
+  });
+  toggleBtn.addEventListener('click', function () {
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+
+  input.value = loadSerial();
+  if (input.value) runCheck(input.value, { silent: true });
+
+  setInterval(function () {
+    var serial = loadSerial();
+    if (serial) runCheck(serial, { silent: true });
+  }, RECHECK_MS);
+})();
+
+/* ================= 主程式：框架選擇／欄位／提示詞組裝／AI 生成／儲存清單 ================= */
+(function(){
+  'use strict';
+  function $(id){ return document.getElementById(id); }
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ---------- 四種框架定義：欄位、提示詞模板、範例 ---------- */
+  var FRAMEWORKS = {
+    video: {
+      label: 'AI 影音工坊框架', shortEn: 'VIDEO SCRIPT', shortZh: '影音工坊',
+      hint: '填主題／段數／補充說明，組成可直接貼進 ai-video-studio「01 腳本」欄位的逐行提示詞規格（格式：中文旁白｜英文搜尋關鍵字）。',
+      fields: [
+        {key:'topic', label:'主題', type:'text', placeholder:'例：手沖咖啡店開幕宣傳'},
+        {key:'segments', label:'幾段', type:'number', placeholder:'3', hint:'要產生幾行畫面段落，建議 3～8'},
+        {key:'notes', label:'補充說明', type:'textarea', placeholder:'例：走溫馨手作風格，語氣親切、避免太商業化（選填）'}
+      ],
+      template: function(v){
+        var segs = parseInt(v.segments, 10);
+        if(!segs || segs < 1) segs = 3;
+        var lines = [];
+        lines.push('你是一位短影音腳本編劇，請為「AI 影音工坊」影片製作工具撰寫逐段腳本。');
+        lines.push('主題：' + v.topic);
+        lines.push('段數：請產生正好 ' + segs + ' 行（每行代表一個畫面段落）');
+        if(v.notes) lines.push('補充說明：' + v.notes);
+        lines.push('');
+        lines.push('輸出格式要求（非常重要，請嚴格遵守）：');
+        lines.push('1. 每行格式固定為「中文旁白文字｜英文Pexels影片搜尋關鍵字」，中間用一個半形直線符號 | 分隔');
+        lines.push('2. 每行只能有一個 | 符號，不要輸出多個 |');
+        lines.push('3. 不要輸出行號、不要輸出任何說明文字、標題或前後贅語，只輸出 ' + segs + ' 行內容，一行一段');
+        lines.push('4. 英文關鍵字要簡短具體（2-4個英文單字），適合用來搜尋免費影片素材庫');
+        lines.push('5. 中文旁白文字要口語自然，適合當作口白配音使用');
+        lines.push('6. 分隔符號務必使用半形直線 | （鍵盤上 Shift+反斜線），不要用全形｜或其他相似符號');
+        lines.push('');
+        lines.push('範例格式（僅示意分隔符號用法，實際內容請依主題重新創作，不要照抄）：');
+        lines.push('每一杯咖啡都是一場旅行 | barista pouring coffee');
+        return lines.join('\n');
+      },
+      presets: [
+        {name:'咖啡店開幕宣傳', topic:'手沖咖啡店開幕宣傳', segments:'3', notes:'走溫馨手作風格，語氣親切、避免太商業化'},
+        {name:'線上課程招生', topic:'AI 應用線上課程招生', segments:'5', notes:'強調實作導向、適合零基礎學員，語氣要有行動呼籲'},
+        {name:'手作甜點新品上市', topic:'手作甜點品牌新品上市', segments:'4', notes:'畫面偏浪漫唯美，旁白可以帶一點故事感'}
+      ]
+    },
+    tag: {
+      label: 'TAG 框架', shortEn: 'TASK · ACTION · GOAL', shortZh: 'TAG',
+      hint: 'T 任務／A 動作／G 目標——把「要做什麼、怎麼做、為了什麼」講清楚，適合交辦型任務。',
+      fields: [
+        {key:'task', label:'T · Task（任務）', type:'textarea', placeholder:'例：撰寫一封給客戶的道歉信'},
+        {key:'action', label:'A · Action（動作）', type:'textarea', placeholder:'例：說明延遲原因、提供補償方案'},
+        {key:'goal', label:'G · Goal（目標）', type:'textarea', placeholder:'例：讓客戶感受到誠意，願意繼續合作'}
+      ],
+      template: function(v){
+        return '任務（Task）：' + v.task + '\n'
+          + '行動（Action）：' + v.action + '\n'
+          + '目標（Goal）：' + v.goal + '\n\n'
+          + '請依照上述任務、行動與目標，直接完成這項任務並輸出完整結果，不需要重複條列輸入內容。';
+      },
+      presets: [
+        {name:'出貨延遲道歉信', task:'針對出貨延遲撰寫一封給客戶的道歉信', action:'說明延遲原因、提供折扣補償方案、附上新的預計到貨時間', goal:'讓客戶感受到誠意與重視，願意繼續信任並持續合作'},
+        {name:'產品說明簡報大綱', task:'幫新推出的訂閱制記帳 App 寫一份產品說明簡報大綱', action:'介紹核心功能、目標客群痛點、與競品的差異化', goal:'讓投資人在 5 分鐘內理解產品價值並產生興趣'},
+        {name:'在職訓練活動通知', task:'撰寫一則給全體員工的在職訓練活動通知', action:'說明訓練時間地點、參加方式、缺席補課規則', goal:'讓員工清楚了解安排並準時出席，降低請假率'}
+      ]
+    },
+    ape: {
+      label: 'APE 框架', shortEn: 'ACTION · PURPOSE · EXPECTATION', shortZh: 'APE',
+      hint: 'A 行動／P 目的／E 期待輸出——把「要做的事、為什麼做、想要什麼樣的結果」講清楚，適合明確可執行的單一請求。',
+      fields: [
+        {key:'action', label:'A · Action（行動）', type:'textarea', placeholder:'例：幫我把這份會議紀錄整理成條列重點'},
+        {key:'purpose', label:'P · Purpose（目的）', type:'textarea', placeholder:'例：方便沒有出席會議的同事快速掌握決議事項'},
+        {key:'expectation', label:'E · Expectation（期待輸出）', type:'textarea', placeholder:'例：不超過10條重點、依重要程度排序'}
+      ],
+      template: function(v){
+        return '行動（Action）：' + v.action + '\n'
+          + '目的（Purpose）：' + v.purpose + '\n'
+          + '期待輸出（Expectation）：' + v.expectation + '\n\n'
+          + '請依照上述行動、目的與期待輸出，直接執行並提供完整結果，並符合期待輸出所描述的格式與限制。';
+      },
+      presets: [
+        {name:'會議紀錄整理重點', action:'幫我把這份會議紀錄整理成條列重點', purpose:'方便沒有出席會議的同事快速掌握決議事項', expectation:'輸出不超過10條重點、每條一句話、依重要程度排序'},
+        {name:'技術文件改寫給行銷看', action:'幫我把這篇技術文件翻譯成適合行銷團隊閱讀的版本', purpose:'讓非技術背景的同事也能理解產品功能並用於銷售溝通', expectation:'用白話文改寫、保留關鍵功能名稱、避免專業術語'},
+        {name:'新功能可行性分析', action:'幫我針對這個新功能構想做一份可行性分析', purpose:'作為下週產品會議的討論基礎', expectation:'包含優點、風險、預估開發時間三個部分，條列呈現'}
+      ]
+    },
+    costar: {
+      label: 'CO-STAR 框架', shortEn: 'CONTEXT · OBJECTIVE · STYLE · TONE · AUDIENCE · RESPONSE', shortZh: 'CO-STAR',
+      hint: 'Context 背景／Objective 目標／Style 風格／Tone 語氣／Audience 受眾／Response 輸出格式——六個維度最完整，適合需要精準控制文字風格與格式的內容產出。',
+      fields: [
+        {key:'context', label:'C · Context（背景）', type:'textarea', placeholder:'例：一家剛開幕、主打天然成分的手工皂電商品牌'},
+        {key:'objective', label:'O · Objective（目標）', type:'textarea', placeholder:'例：寫一篇 Instagram 貼文文案，介紹新品上市'},
+        {key:'style', label:'S · Style（風格）', type:'text', placeholder:'例：溫暖故事感，帶一點生活風格雜誌的敘事感'},
+        {key:'tone', label:'T · Tone（語氣）', type:'text', placeholder:'例：親切自然，像朋友分享好物'},
+        {key:'audience', label:'A · Audience（受眾）', type:'text', placeholder:'例：25-40歲、注重生活品質的女性消費者'},
+        {key:'response', label:'R · Response（輸出格式）', type:'textarea', placeholder:'例：一段 100-150 字的貼文文案，附 5 個 hashtag 建議'}
+      ],
+      template: function(v){
+        return '背景（Context）：' + v.context + '\n'
+          + '目標（Objective）：' + v.objective + '\n'
+          + '風格（Style）：' + v.style + '\n'
+          + '語氣（Tone）：' + v.tone + '\n'
+          + '受眾（Audience）：' + v.audience + '\n'
+          + '輸出格式（Response）：' + v.response + '\n\n'
+          + '請依照以上設定直接生成內容。';
+      },
+      presets: [
+        {name:'電商Instagram新品文案', context:'一家剛開幕、主打天然成分的手工皂電商品牌', objective:'寫一篇 Instagram 貼文文案，介紹新品上市', style:'溫暖故事感，帶一點生活風格雜誌的敘事感', tone:'親切自然，像朋友分享好物', audience:'25-40歲、注重生活品質的女性消費者', response:'一段 100-150 字的貼文文案，附 5 個 hashtag 建議'},
+        {name:'內部教育訓練逐字稿', context:'公司即將導入新的請假系統，需要教育全體員工怎麼使用', objective:'寫一份簡報逐字稿，說明系統操作流程', style:'條理清楚、步驟分明，避免冗長敘述', tone:'專業但不生硬，帶一點耐心引導的語氣', audience:'對新系統陌生、平均年齡偏高的行政人員', response:'依步驟編號的逐字稿，每個步驟不超過3句話'},
+        {name:'客服危機公開回覆', context:'顧客在社群平台公開抱怨收到的商品有瑕疵，貼文已有不少留言關注', objective:'撰寫一則公開回覆，安撫顧客情緒並提出解決方案', style:'誠懇、不卸責，展現品牌願意負責的態度', tone:'真誠且冷靜，不卑不亢', audience:'原顧客本人以及圍觀的其他潛在消費者', response:'一段150字以內的公開留言回覆'}
+      ]
+    }
+  };
+  var TYPE_ORDER = ['video','tag','ape','costar'];
+
+  /* ---------- 狀態：目前框架、各框架欄位值、組成結果、AI 結果（存 localStorage） ---------- */
+  var STATE_KEY = 'promptGenState';
+  var state = loadState();
+  function defaultState(){
+    var fields = {}, assembled = {}, aiOut = {};
+    TYPE_ORDER.forEach(function(t){ fields[t] = {}; assembled[t] = ''; aiOut[t] = ''; });
+    return {activeType: 'video', fields: fields, assembled: assembled, aiOutput: aiOut};
+  }
+  function loadState(){
+    try{
+      var raw = JSON.parse(localStorage.getItem(STATE_KEY));
+      if(!raw || !raw.fields) return defaultState();
+      var d = defaultState();
+      TYPE_ORDER.forEach(function(t){
+        if(raw.fields[t]) d.fields[t] = raw.fields[t];
+        if(typeof raw.assembled === 'object' && raw.assembled && raw.assembled[t]) d.assembled[t] = raw.assembled[t];
+        if(typeof raw.aiOutput === 'object' && raw.aiOutput && raw.aiOutput[t]) d.aiOutput[t] = raw.aiOutput[t];
+      });
+      if(raw.activeType && FRAMEWORKS[raw.activeType]) d.activeType = raw.activeType;
+      return d;
+    }catch(e){ return defaultState(); }
+  }
+  function persistState(){
+    try{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  /* ---------- 分頁切換 ---------- */
+  function renderTabs(){
+    var wrap = $('typeTabs');
+    wrap.innerHTML = TYPE_ORDER.map(function(t){
+      var fw = FRAMEWORKS[t];
+      return '<button type="button" class="type-tab' + (t === state.activeType ? ' active' : '') + '" data-type="' + t + '">'
+        + '<span class="tt-en">' + escapeHtml(fw.shortEn) + '</span>'
+        + '<span class="tt-zh">' + escapeHtml(fw.shortZh) + '</span>'
+        + '</button>';
+    }).join('');
+    wrap.querySelectorAll('.type-tab').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        state.activeType = btn.getAttribute('data-type');
+        persistState();
+        renderTabs();
+        renderBuilder();
+      });
+    });
+  }
+
+  /* ---------- 欄位渲染 ---------- */
+  function currentFramework(){ return FRAMEWORKS[state.activeType]; }
+  function currentFieldValues(){ return state.fields[state.activeType]; }
+
+  function renderBuilder(){
+    var fw = currentFramework();
+    $('builderBadge').textContent = fw.shortZh.length <= 4 ? fw.shortZh : '▦';
+    $('builderTitle').textContent = fw.label;
+    $('builderHint').textContent = fw.hint;
+
+    var sel = $('presetSelect');
+    sel.innerHTML = '<option value="">— 選擇一個情境快速開始 —</option>'
+      + fw.presets.map(function(p, i){ return '<option value="' + i + '">' + escapeHtml(p.name) + '</option>'; }).join('');
+
+    var values = currentFieldValues();
+    $('fieldsContainer').innerHTML = fw.fields.map(function(f){
+      var val = escapeHtml(values[f.key] || '');
+      var inputHtml;
+      if(f.type === 'textarea'){
+        inputHtml = '<textarea id="f_' + f.key + '" placeholder="' + escapeHtml(f.placeholder || '') + '">' + val + '</textarea>';
+      } else if(f.type === 'number'){
+        inputHtml = '<input type="number" id="f_' + f.key + '" min="1" max="20" placeholder="' + escapeHtml(f.placeholder || '') + '" value="' + val + '">';
+      } else {
+        inputHtml = '<input type="text" id="f_' + f.key + '" placeholder="' + escapeHtml(f.placeholder || '') + '" value="' + val + '">';
+      }
+      return '<div class="field">'
+        + '<label for="f_' + f.key + '">' + escapeHtml(f.label) + '</label>'
+        + inputHtml
+        + (f.hint ? '<p class="field-hint">' + escapeHtml(f.hint) + '</p>' : '')
+        + '</div>';
+    }).join('');
+
+    fw.fields.forEach(function(f){
+      $('f_' + f.key).addEventListener('input', function(){
+        currentFieldValues()[f.key] = this.value;
+        persistState();
+      });
+    });
+
+    $('promptOutput').textContent = state.assembled[state.activeType] || '';
+    $('aiOutput').textContent = state.aiOutput[state.activeType] || '';
+  }
+
+  function readFieldValues(){
+    var fw = currentFramework();
+    var v = {};
+    fw.fields.forEach(function(f){ v[f.key] = ($('f_' + f.key).value || '').trim(); });
+    return v;
+  }
+  function fieldsComplete(v){
+    var fw = currentFramework();
+    return fw.fields.every(function(f){ return v[f.key] && v[f.key].length > 0; });
+  }
+
+  /* ---------- 組成提示詞 ---------- */
+  function showToast(msg){
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  function assemblePrompt(){
+    var v = readFieldValues();
+    if(!fieldsComplete(v)){ showToast('請先填寫所有欄位再組成提示詞'); return null; }
+    var text = currentFramework().template(v);
+    state.assembled[state.activeType] = text;
+    persistState();
+    $('promptOutput').textContent = text;
+    return text;
+  }
+
+  $('buildBtn').addEventListener('click', function(){
+    var text = assemblePrompt();
+    if(text) showToast('已組成提示詞');
+  });
+
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); showToast('已複製到剪貼簿'); }
+    catch(e){ showToast('複製失敗，請手動選取文字'); }
+    document.body.removeChild(ta);
+  }
+  function copyText(text, emptyMsg){
+    if(!text){ showToast(emptyMsg); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ showToast('已複製到剪貼簿'); }).catch(function(){ fallbackCopy(text); });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  $('copyPromptBtn').addEventListener('click', function(){
+    copyText(state.assembled[state.activeType], '還沒有組成的提示詞可以複製');
+  });
+  $('copyAiBtn').addEventListener('click', function(){
+    copyText(state.aiOutput[state.activeType], '還沒有 AI 產生結果可以複製');
+  });
+
+  $('clearBtn').addEventListener('click', function(){
+    var v = readFieldValues();
+    var hasContent = Object.keys(v).some(function(k){ return v[k]; });
+    if(hasContent && !confirm('確定要清空目前框架的所有欄位嗎？此動作無法復原。')) return;
+    state.fields[state.activeType] = {};
+    persistState();
+    renderBuilder();
+  });
+
+  $('presetSelect').addEventListener('change', function(){
+    var idx = this.value;
+    if(idx === '') return;
+    var v = readFieldValues();
+    var hasContent = Object.keys(v).some(function(k){ return v[k]; });
+    if(hasContent && !confirm('套用範例將覆蓋目前已填寫的內容，確定要套用嗎？')){
+      this.value = '';
+      return;
+    }
+    var preset = currentFramework().presets[parseInt(idx, 10)];
+    var fw = currentFramework();
+    var fields = {};
+    fw.fields.forEach(function(f){ fields[f.key] = preset[f.key] || ''; });
+    state.fields[state.activeType] = fields;
+    persistState();
+    renderBuilder();
+    this.value = '';
+    showToast('已套用範例「' + preset.name + '」');
+  });
+
+  /* ---------- BYOK：串接 Claude／OpenAI／Gemini／OpenRouter（金鑰只存本機瀏覽器） ---------- */
+  var AI_PROVIDERS = {
+    claude:     {label:'Claude（Anthropic）',       defaultModel:'claude-opus-4-8'},
+    openai:     {label:'OpenAI',                    defaultModel:'gpt-4o-mini'},
+    gemini:     {label:'Gemini（Google AI Studio）', defaultModel:'gemini-3.5-flash'},
+    openrouter: {label:'OpenRouter',                defaultModel:'openai/gpt-4o-mini'}
+  };
+  var API_STORAGE_KEY = 'promptGenApiConfig';
+
+  function loadApiConfig(){
+    try{ return JSON.parse(localStorage.getItem(API_STORAGE_KEY)) || {}; }catch(e){ return {}; }
+  }
+  function persistApiConfig(){
+    try{
+      localStorage.setItem(API_STORAGE_KEY, JSON.stringify({
+        provider: $('aiProvider').value,
+        model: $('aiModel').value.trim(),
+        apiKey: $('aiKey').value.trim()
+      }));
+    }catch(e){}
+  }
+  function initAiPanel(){
+    var sel = $('aiProvider');
+    sel.innerHTML = Object.keys(AI_PROVIDERS).map(function(k){
+      return '<option value="' + k + '">' + AI_PROVIDERS[k].label + '</option>';
+    }).join('');
+    var cfg = loadApiConfig();
+    sel.value = (cfg.provider && AI_PROVIDERS[cfg.provider]) ? cfg.provider : 'claude';
+    $('aiModel').value = cfg.model || AI_PROVIDERS[sel.value].defaultModel;
+    $('aiKey').value = cfg.apiKey || '';
+
+    sel.addEventListener('change', function(){
+      var modelEl = $('aiModel');
+      var isDefault = Object.keys(AI_PROVIDERS).some(function(k){ return AI_PROVIDERS[k].defaultModel === modelEl.value.trim(); });
+      if(!modelEl.value.trim() || isDefault) modelEl.value = AI_PROVIDERS[sel.value].defaultModel;
+      persistApiConfig();
+    });
+    $('aiModel').addEventListener('input', persistApiConfig);
+    $('aiKey').addEventListener('input', persistApiConfig);
+  }
+
+  async function callLLM(provider, model, apiKey, prompt, onRetry){
+    var url, headers, body, extract;
+    if(provider === 'claude'){
+      url = 'https://api.anthropic.com/v1/messages';
+      headers = {
+        'content-type': 'application/json', 'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
+      };
+      body = {model: model, max_tokens: 4000, messages: [{role: 'user', content: prompt}]};
+      extract = function(d){
+        if(d.stop_reason === 'refusal') throw new Error('模型拒絕了這個請求（refusal）');
+        var t = (d.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
+        if(!t) throw new Error('回應中沒有文字內容');
+        return t;
+      };
+    } else if(provider === 'openai'){
+      url = 'https://api.openai.com/v1/chat/completions';
+      headers = {'content-type': 'application/json', 'authorization': 'Bearer ' + apiKey};
+      body = {model: model, messages: [{role: 'user', content: prompt}]};
+      extract = function(d){
+        var t = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+        if(!t) throw new Error('回應中沒有文字內容');
+        return t;
+      };
+    } else if(provider === 'gemini'){
+      url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
+      headers = {'content-type': 'application/json', 'x-goog-api-key': apiKey};
+      body = {contents: [{parts: [{text: prompt}]}]};
+      extract = function(d){
+        var parts = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
+        var t = parts.map(function(p){ return p.text || ''; }).join('');
+        if(!t) throw new Error('回應中沒有文字內容');
+        return t;
+      };
+    } else if(provider === 'openrouter'){
+      url = 'https://openrouter.ai/api/v1/chat/completions';
+      headers = {'content-type': 'application/json', 'authorization': 'Bearer ' + apiKey};
+      body = {model: model, messages: [{role: 'user', content: prompt}]};
+      extract = function(d){
+        var t = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+        if(!t) throw new Error('回應中沒有文字內容');
+        return t;
+      };
+    } else {
+      throw new Error('不支援的服務商');
+    }
+
+    var RETRYABLE = {429:1, 500:1, 503:1, 529:1};
+    var MAX_TRIES = 3;
+    for(var attempt = 1; attempt <= MAX_TRIES; attempt++){
+      var resp = await fetch(url, {method: 'POST', headers: headers, body: JSON.stringify(body), signal: AbortSignal.timeout(180000)});
+      var raw = await resp.text();
+      if(resp.ok) return extract(JSON.parse(raw));
+      var msg = raw.slice(0, 300);
+      try{
+        var err = JSON.parse(raw);
+        msg = (err.error && err.error.message) || err.message || msg;
+      }catch(e){}
+      if(RETRYABLE[resp.status] && attempt < MAX_TRIES){
+        var waitSec = attempt * 8;
+        if(onRetry) onRetry(attempt, resp.status, waitSec);
+        await new Promise(function(r){ setTimeout(r, waitSec * 1000); });
+        continue;
+      }
+      if(resp.status === 404) msg += '——這通常表示模型名稱錯誤或已停用，請到該服務商的模型列表確認目前可用的模型 ID';
+      if(RETRYABLE[resp.status]) msg += '——已自動重試 ' + (MAX_TRIES - 1) + ' 次仍失敗，多為服務商暫時過載，請稍候幾分鐘再試，或更換模型／服務商';
+      throw new Error('API 回應 ' + resp.status + '：' + msg);
+    }
+  }
+
+  $('aiGenerateBtn').addEventListener('click', async function(){
+    var provider = $('aiProvider').value;
+    var model = $('aiModel').value.trim();
+    var apiKey = $('aiKey').value.trim();
+    var report = $('aiReport');
+
+    if(!apiKey){ report.innerHTML = '<div class="bad">請先在「API 連線設定」填入 API 金鑰</div>'; return; }
+    if(!model){ report.innerHTML = '<div class="bad">請填入模型名稱</div>'; return; }
+
+    var prompt = state.assembled[state.activeType];
+    if(!prompt){
+      prompt = assemblePrompt();
+      if(!prompt) return;
+    }
+
+    persistApiConfig();
+    var btn = $('aiGenerateBtn');
+    btn.disabled = true;
+    report.innerHTML = '<div class="ok">呼叫 ' + AI_PROVIDERS[provider].label + '（' + escapeHtml(model) + '）中，請稍候…</div>';
+    try{
+      var text = await callLLM(provider, model, apiKey, prompt, function(attempt, status, waitSec){
+        report.innerHTML = '<div class="warn">API 回應 ' + status + '（服務商暫時過載／限流），' + waitSec + ' 秒後自動重試（第 ' + attempt + '／2 次）…</div>';
+      });
+      state.aiOutput[state.activeType] = text;
+      persistState();
+      $('aiOutput').textContent = text;
+      report.innerHTML = '<div class="ok">已產生內容，請自行檢查是否符合需求後再使用。</div>';
+    }catch(err){
+      var msg = err.name === 'TimeoutError' ? '請求逾時（180秒），請重試或換模型' : err.message;
+      report.innerHTML = '<div class="bad">產生失敗：' + escapeHtml(msg) + '</div>';
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  /* ---------- 已儲存的提示詞（localStorage 清單，非檔案下載） ---------- */
+  var SAVED_KEY = 'promptGenSavedItems';
+  function sanitizeFilename(name){ return name.replace(/[\\/:*?"<>|]/g, '').trim(); }
+  function loadSaved(){ try{ return JSON.parse(localStorage.getItem(SAVED_KEY)) || []; }catch(e){ return []; } }
+  function persistSaved(list){ try{ localStorage.setItem(SAVED_KEY, JSON.stringify(list)); }catch(e){} }
+  function formatSavedDate(ts){
+    var d = new Date(ts);
+    function pad(n){ return String(n).length < 2 ? '0' + n : String(n); }
+    return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function itemFullText(item){
+    var text = item.assembledPrompt || '';
+    if(item.aiOutput) text += '\n\n---- AI 產生結果 ----\n\n' + item.aiOutput;
+    return text;
+  }
+  function renderSavedList(){
+    var list = loadSaved();
+    var container = $('savedList');
+    if(!list.length){
+      container.innerHTML = '<p class="saved-empty">尚未儲存任何提示詞——組成提示詞後，在上面取個名字按「儲存」。</p>';
+      return;
+    }
+    var sorted = list.slice().sort(function(a, b){ return b.savedAt - a.savedAt; });
+    container.innerHTML = sorted.map(function(item){
+      var typeLabel = (FRAMEWORKS[item.type] && FRAMEWORKS[item.type].shortZh) || item.type;
+      return '<div class="saved-item">'
+        + '<div class="saved-item-main">'
+        + '<div class="saved-item-name">[' + escapeHtml(typeLabel) + '] ' + escapeHtml(item.name) + '</div>'
+        + '<div class="saved-item-meta">' + formatSavedDate(item.savedAt) + (item.aiOutput ? '　·　含 AI 產生結果' : '') + '</div>'
+        + '</div>'
+        + '<div class="saved-item-actions">'
+        + '<button type="button" class="chip" data-action="load" data-id="' + item.id + '">載入</button>'
+        + '<button type="button" class="chip" data-action="copy" data-id="' + item.id + '">複製</button>'
+        + '<button type="button" class="chip" data-action="download" data-id="' + item.id + '">下載 .txt</button>'
+        + '<button type="button" class="chip" data-action="delete" data-id="' + item.id + '">刪除</button>'
+        + '</div></div>';
+    }).join('');
+  }
+
+  $('saveBtn').addEventListener('click', function(){
+    var prompt = state.assembled[state.activeType];
+    if(!prompt){ showToast('請先組成提示詞再儲存'); return; }
+    var name = sanitizeFilename($('filenameInput').value.trim());
+    if(!name){
+      var fw = currentFramework();
+      var v = readFieldValues();
+      var firstVal = fw.fields.map(function(f){ return v[f.key]; }).filter(Boolean)[0] || fw.shortZh;
+      name = sanitizeFilename(firstVal.slice(0, 20)) || (fw.shortZh + '提示詞');
+    }
+    var list = loadSaved();
+    var existing = list.find(function(it){ return it.name === name && it.type === state.activeType; });
+    if(existing && !confirm('已經有一筆叫做「' + name + '」的紀錄，要覆蓋它嗎？')) return;
+    var record = {
+      type: state.activeType, name: name, savedAt: Date.now(),
+      fieldValues: readFieldValues(), assembledPrompt: prompt, aiOutput: state.aiOutput[state.activeType] || ''
+    };
+    if(existing){
+      Object.assign(existing, record);
+    } else {
+      record.id = 'p' + Date.now() + Math.random().toString(36).slice(2, 7);
+      list.push(record);
+    }
+    persistSaved(list);
+    renderSavedList();
+    $('filenameInput').value = name;
+    showToast('已儲存「' + name + '」');
+  });
+
+  $('savedList').addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    var action = btn.getAttribute('data-action');
+    var id = btn.getAttribute('data-id');
+    var list = loadSaved();
+    var idx = list.findIndex(function(it){ return it.id === id; });
+    if(idx < 0) return;
+    var item = list[idx];
+
+    if(action === 'load'){
+      if(!FRAMEWORKS[item.type]){ showToast('找不到對應的框架類型'); return; }
+      var v = readFieldValues();
+      var hasContent = Object.keys(v).some(function(k){ return v[k]; });
+      if(hasContent && !confirm('載入「' + item.name + '」將切換框架並覆蓋目前欄位內容，確定嗎？')) return;
+      state.activeType = item.type;
+      state.fields[item.type] = item.fieldValues || {};
+      state.assembled[item.type] = item.assembledPrompt || '';
+      state.aiOutput[item.type] = item.aiOutput || '';
+      persistState();
+      renderTabs();
+      renderBuilder();
+      $('filenameInput').value = item.name;
+      showToast('已載入「' + item.name + '」');
+    } else if(action === 'copy'){
+      copyText(itemFullText(item), '沒有內容可以複製');
+    } else if(action === 'download'){
+      var text2 = itemFullText(item);
+      var name2 = sanitizeFilename(item.name) || 'prompt';
+      var blob = new Blob([text2], {type: 'text/plain;charset=utf-8'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name2 + '.txt';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('已下載「' + name2 + '.txt」');
+    } else if(action === 'delete'){
+      if(!confirm('確定要刪除「' + item.name + '」嗎？此動作無法復原。')) return;
+      list.splice(idx, 1);
+      persistSaved(list);
+      renderSavedList();
+      showToast('已刪除「' + item.name + '」');
+    }
+  });
+
+  /* ---------- 初始化 ---------- */
+  renderTabs();
+  renderBuilder();
+  renderSavedList();
+  initAiPanel();
+})();
+</script>
+
+</body>
+</html>
