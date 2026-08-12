@@ -498,14 +498,30 @@
         if(!matched){
           return '「' + v.topic + '」的短影音口白腳本，共 ' + segs + ' 段';
         }
-        var base = matched.example;
-        // 範例行數務必等於使用者填的段數，避免「共 N 段」跟範例只有 3 行這種數字對不上的狀況
-        var example = [];
-        for(var i = 0; i < segs; i++){ example.push(base[i % base.length]); }
         var lines = [];
         lines.push('請寫一份關於「' + v.topic + '」的短影音口白腳本，共 ' + segs + ' 段，每段一行，格式為「中文旁白 | 英文搜尋關鍵字」，例如：');
-        example.forEach(function(l){ lines.push(l); });
+        FRAMEWORKS.video.exampleLines(matched, segs).forEach(function(l){ lines.push(l); });
         return lines.join('\n');
+      },
+      // 送給 AI 直接生成時一律要附上格式規則＋範例，不管有沒有套用內建範例——
+      // 「組成提示詞」欄位可以為了展示精簡而省略格式說明，但實際呼叫 AI 時省略會讓
+      // 產出的內容無法解析回 ai-video-studio 需要的「中文旁白 | 英文搜尋關鍵字」逐行格式
+      aiPrompt: function(v){
+        var segs = parseInt(v.segments, 10);
+        if(!segs || segs < 1) segs = 3;
+        var matched = FRAMEWORKS.video.presets.find(function(p){ return p.topic === v.topic; });
+        var lines = [];
+        lines.push('請寫一份關於「' + v.topic + '」的短影音口白腳本，共 ' + segs + ' 段，每段一行，格式為「中文旁白 | 英文搜尋關鍵字」，例如：');
+        FRAMEWORKS.video.exampleLines(matched, segs).forEach(function(l){ lines.push(l); });
+        return lines.join('\n');
+      },
+      // 範例行數務必等於使用者填的段數，避免「共 N 段」跟範例只有 3 行這種數字對不上的狀況；
+      // 沒有套用內建範例時退回咖啡店範例當通用格式示意
+      exampleLines: function(matched, segs){
+        var base = (matched && matched.example) || FRAMEWORKS.video.presets[0].example;
+        var out = [];
+        for(var i = 0; i < segs; i++){ out.push(base[i % base.length]); }
+        return out;
       },
       presets: [
         {name:'咖啡店開幕宣傳', topic:'手沖咖啡店開幕宣傳', segments:'3', example:[
@@ -901,13 +917,18 @@
       prompt = assemblePrompt();
       if(!prompt) return;
     }
+    // 實際送給 AI 的內容用框架各自的 aiPrompt()（沒有另外定義就沿用 template()）——
+    // 影音工坊框架的「組成提示詞」欄位在自訂主題時會省略格式規則以求精簡展示，
+    // 但呼叫 AI 生成時一定要帶上格式規則，否則產出的內容無法貼回 ai-video-studio 使用
+    var fw = currentFramework();
+    var promptForAi = (fw.aiPrompt || fw.template)(readFieldValues());
 
     persistApiConfig();
     var btn = $('aiGenerateBtn');
     btn.disabled = true;
     report.innerHTML = '<div class="ok">呼叫 ' + AI_PROVIDERS[provider].label + '（' + escapeHtml(model) + '）中，請稍候…</div>';
     try{
-      var text = await callLLM(provider, model, apiKey, prompt, function(attempt, status, waitSec){
+      var text = await callLLM(provider, model, apiKey, promptForAi, function(attempt, status, waitSec){
         report.innerHTML = '<div class="warn">API 回應 ' + status + '（服務商暫時過載／限流），' + waitSec + ' 秒後自動重試（第 ' + attempt + '／2 次）…</div>';
       });
       state.aiOutput[state.activeType] = text;
