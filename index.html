@@ -483,23 +483,11 @@
         var segs = parseInt(v.segments, 10);
         if(!segs || segs < 1) segs = 3;
         var lines = [];
-        lines.push('你是一位短影音腳本編劇，請為「AI 影音工坊」影片製作工具撰寫逐段腳本。');
-        lines.push('主題：' + v.topic);
-        lines.push('段數：請產生正好 ' + segs + ' 行（每行代表一個畫面段落）');
-        if(v.notes) lines.push('補充說明：' + v.notes);
-        lines.push('');
-        lines.push('輸出格式要求（非常重要，請嚴格遵守）：');
-        lines.push('1. 每行格式固定為「中文旁白文字｜英文Pexels影片搜尋關鍵字」，中間用一個半形直線符號 | 分隔');
-        lines.push('2. 每行只能有一個 | 符號，不要輸出多個 |');
-        lines.push('3. 不要輸出行號、不要輸出任何說明文字、標題或前後贅語，只輸出 ' + segs + ' 行內容，一行一段');
-        lines.push('4. 英文關鍵字要簡短具體（2-4個英文單字），適合用來搜尋免費影片素材庫');
-        lines.push('5. 中文旁白文字要口語自然，適合當作口白配音使用');
-        lines.push('6. 分隔符號務必使用半形直線 | （鍵盤上 Shift+反斜線），不要用全形｜或其他相似符號');
-        lines.push('');
-        lines.push('範例格式（僅示意每行結構與分隔符號用法，實際內容請依主題與段數重新創作，不要照抄）：');
+        lines.push('請寫一份關於「' + v.topic + '」的短影音口白腳本，共 ' + segs + ' 段，每段一行，格式為「中文旁白 | 英文搜尋關鍵字」，例如：');
         lines.push('每一杯咖啡都是一場旅行 | barista pouring coffee');
         lines.push('嚴選豆子每日新鮮烘焙 | coffee beans roasting');
         lines.push('歡迎光臨轉角的香氣 | cozy coffee shop');
+        if(v.notes) lines.push('補充說明：' + v.notes);
         return lines.join('\n');
       },
       presets: [
