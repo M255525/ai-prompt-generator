@@ -371,19 +371,29 @@
     server_error: '授權伺服器發生錯誤，請稍後再試'
   };
 
-  function checkLicense(serial) {
+  function checkLicense(serial, attempt) {
+    attempt = attempt || 1;
     if (!LICENSE_CHECK_URL) {
       return Promise.reject(new Error('尚未設定授權伺服器網址，請聯繫工具提供者'));
     }
     return fetch(LICENSE_CHECK_URL, {
       method: 'POST',
       body: JSON.stringify({ serial: serial }),
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(40000)
     }).catch(function (err) {
-      throw new Error(err.name === 'TimeoutError' ? '授權伺服器連線逾時，請檢查網路連線後再試一次' : '無法連線授權伺服器，請檢查網路連線');
+      throw new Error(err.name === 'TimeoutError' ? '授權伺服器回應時間較長，請稍候片刻後再試一次' : '無法連線授權伺服器，請檢查網路連線');
     }).then(function (resp) {
       if (!resp.ok) throw new Error('授權伺服器回應異常（' + resp.status + '）');
-      return resp.json();
+      return resp.text();
+    }).then(function (text) {
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        // 剛啟動的 Apps Script 偶爾會在轉址過程回傳異常的中繼頁面（非合法 JSON），
+        // 重試一次通常就會拿到正常回應，不需要把這個暫時性狀況攤給使用者看
+        if (attempt < 2) return checkLicense(serial, attempt + 1);
+        throw new Error('授權伺服器回應異常，請稍後再試一次');
+      }
     });
   }
 
