@@ -64,6 +64,10 @@ node --check _check.js
 
 **上面「回饋機制與快取踩坑修正」第(1)點的描述對本檔不準確，已於 2026-08-16 修正**：那段文字（改用 `window.alert()`）實際上只套用到當時**沒有** `showToast()` 的 6 個專案；本工具有 `showToast()`，被誤判為「沒有這個問題」而跳過，但實際程式碼一直是 `if (typeof showToast === 'function') showToast(fallbackMessage());`——這裡有個關鍵盲點：PWA 安裝腳本是獨立 `<script>`／獨立 IIFE，`showToast()` 宣告在**另一個**（主程式的）IIFE 裡，函式作用域不會跨 IIFE 共享，所以 `typeof showToast` 在安裝腳本裡永遠是 `'undefined'`——`deferredPrompt` 為 `null` 時點安裝按鈕會**完全沒有任何回饋、也沒有主控台錯誤**。這是 2026-08-16 排查 SocialPost「按鈕鍵但沒有對應功能」回報時才發現、確認 `ai-image-prompt-studio`／`ai-music-prompt-studio` 也同樣中招的系統性 bug，不是本工具獨有。修法：安裝腳本不再依賴外部 `showToast`，改成自己實作 `notify(msg)`（直接操作 `#toast` DOM 元素），`deferredPrompt.prompt()` 補上 try/catch，三個姊妹專案一次修正。
 
+## 訪客次數計數器（2026-08-21 新增）
+
+頁尾 `.footer-meta` 加了 `visitor-badge.laobi.icu` 的 SVG badge（`<img>` 直接嵌入，`page_id=m255525.ai-prompt-generator`，免金鑰免後端），做法比照 `SocialPost` 已驗證過的模式，與 `ai-image-prompt-studio`／`ai-music-prompt-studio` 同一次一併加上。
+
 ## 本次未做（後續視需要再處理）
 
 - 桌面版 exe 打包（`launcher.py` + PyInstaller，比照 `icap-generator/icap/`、`Prompt/Prompt_Eng/` 的做法；若之後要做，記得先查工作區其他 CLAUDE.md 目前已佔用的埠號清單，取一個未使用的埠）
