@@ -172,6 +172,10 @@
   .saved-item-actions{display:flex;gap:6px;flex-wrap:wrap;}
   .chip{font-family:var(--font-mono);font-size:11.5px;background:var(--panel-raised);color:var(--text-dim);border:1px solid var(--line);padding:5px 10px;border-radius:6px;cursor:pointer;}
   .chip:hover{border-color:var(--accent);color:var(--accent);}
+  .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px;}
+
+  .idea-block{border:1px solid var(--violet-soft);border-radius:8px;padding:16px;margin-bottom:18px;background:rgba(167,139,250,.05);}
+  .idea-block .field{margin-bottom:0;}
 
   footer{max-width:820px;margin:0 auto;padding:0 20px 50px;}
   .warn-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px;font-size:12.5px;color:var(--text-dim);}
@@ -238,6 +242,20 @@
       <label for="presetSelect">套用範例</label>
       <select id="presetSelect"><option value="">— 選擇一個情境快速開始 —</option></select>
       <button class="btn ghost" id="clearBtn" type="button">清空欄位</button>
+    </div>
+
+    <div class="idea-block" id="ideaBlock" style="display:none;">
+      <div class="field">
+        <label for="ideaInput">💡 一句話生成欄位內容（選用）</label>
+        <textarea id="ideaInput" aria-label="一句話需求描述"></textarea>
+        <p class="field-hint">說一句你想做什麼，AI 會依這個框架自動拆解、填入下方欄位——填好之後仍可自行微調。需先在下方「送給 AI 直接生成內容」填好 API 金鑰。</p>
+      </div>
+      <div class="chip-row" id="ideaChipRow"></div>
+      <div class="output-actions" style="margin:12px 0 0;">
+        <button class="btn violet" id="ideaGenerateBtn" type="button">🧩 AI 拆解成欄位</button>
+        <button class="btn ghost" id="ideaRestoreBtn" type="button" disabled>還原拆解前內容</button>
+      </div>
+      <div id="ideaReport" class="ai-report" aria-live="polite"></div>
     </div>
 
     <div id="fieldsContainer"></div>
@@ -682,6 +700,9 @@
     tag: {
       label: 'TAG 框架', shortEn: 'TASK · ACTION · GOAL', shortZh: 'TAG',
       hint: 'T 任務／A 動作／G 目標——把「要做什麼、怎麼做、為了什麼」講清楚，適合交辦型任務。',
+      aiIdeaSupported: true,
+      ideaPlaceholder: '例：幫我的咖啡店規劃一個月的社群貼文',
+      ideaChips: ['幫我的咖啡店規劃一個月的社群貼文', '寫一封客戶延遲出貨的道歉信', '幫新產品寫一份簡報大綱'],
       fields: [
         {key:'task', label:'T · Task（任務）', type:'textarea', placeholder:'例：撰寫一封給客戶的道歉信'},
         {key:'action', label:'A · Action（動作）', type:'textarea', placeholder:'例：說明延遲原因、提供補償方案'},
@@ -702,6 +723,9 @@
     ape: {
       label: 'APE 框架', shortEn: 'ACTION · PURPOSE · EXPECTATION', shortZh: 'APE',
       hint: 'A 行動／P 目的／E 期待輸出——把「要做的事、為什麼做、想要什麼樣的結果」講清楚，適合明確可執行的單一請求。',
+      aiIdeaSupported: true,
+      ideaPlaceholder: '例：幫我把會議紀錄整理成重點給沒去開會的同事看',
+      ideaChips: ['幫我把會議紀錄整理成重點給沒去開會的同事看', '把這篇技術文件改寫成行銷團隊看得懂的版本', '幫新功能構想做一份可行性分析'],
       fields: [
         {key:'action', label:'A · Action（行動）', type:'textarea', placeholder:'例：幫我把這份會議紀錄整理成條列重點'},
         {key:'purpose', label:'P · Purpose（目的）', type:'textarea', placeholder:'例：方便沒有出席會議的同事快速掌握決議事項'},
@@ -722,6 +746,9 @@
     costar: {
       label: 'CO-STAR 框架', shortEn: 'CONTEXT · OBJECTIVE · STYLE · TONE · AUDIENCE · RESPONSE', shortZh: 'CO-STAR',
       hint: 'Context 背景／Objective 目標／Style 風格／Tone 語氣／Audience 受眾／Response 輸出格式——六個維度最完整，適合需要精準控制文字風格與格式的內容產出。',
+      aiIdeaSupported: true,
+      ideaPlaceholder: '例：幫剛開幕的手工皂品牌寫一篇 IG 新品文案',
+      ideaChips: ['幫剛開幕的手工皂品牌寫一篇 IG 新品文案', '寫一份新請假系統的教育訓練逐字稿', '針對商品瑕疵抱怨寫一則公開回覆'],
       fields: [
         {key:'context', label:'C · Context（背景）', type:'textarea', placeholder:'例：一家剛開幕、主打天然成分的手工皂電商品牌'},
         {key:'objective', label:'O · Objective（目標）', type:'textarea', placeholder:'例：寫一篇 Instagram 貼文文案，介紹新品上市'},
@@ -789,6 +816,8 @@
         state.activeType = btn.getAttribute('data-type');
         persistState();
         renderTabs();
+        $('ideaInput').value = '';
+        $('ideaReport').innerHTML = '';
         renderBuilder();
       });
     });
@@ -803,6 +832,7 @@
     $('builderBadge').textContent = fw.shortZh.length <= 4 ? fw.shortZh : '▦';
     $('builderTitle').textContent = fw.label;
     $('builderHint').textContent = fw.hint;
+    renderIdeaBlock(fw);
 
     var sel = $('presetSelect');
     sel.innerHTML = '<option value="">— 選擇一個情境快速開始 —</option>'
@@ -836,6 +866,34 @@
     $('promptOutput').textContent = state.assembled[state.activeType] || '';
     $('aiOutput').textContent = state.aiOutput[state.activeType] || '';
   }
+
+  /* ---------- 一句話生成欄位內容（AI 拆解，TAG／APE／CO-STAR 適用；影音工坊框架欄位太少不適用） ---------- */
+  var IDEA_BACKUP_KEY = 'promptGenIdeaBackup';
+  function loadIdeaBackups(){ try{ return JSON.parse(localStorage.getItem(IDEA_BACKUP_KEY)) || {}; }catch(e){ return {}; } }
+  function saveIdeaBackup(type, fields){
+    var all = loadIdeaBackups();
+    all[type] = fields;
+    try{ localStorage.setItem(IDEA_BACKUP_KEY, JSON.stringify(all)); }catch(e){}
+  }
+
+  function renderIdeaBlock(fw){
+    var block = $('ideaBlock');
+    if(!fw.aiIdeaSupported){ block.style.display = 'none'; return; }
+    block.style.display = '';
+    $('ideaInput').placeholder = fw.ideaPlaceholder || '';
+    $('ideaChipRow').innerHTML = (fw.ideaChips || []).map(function(text){
+      return '<button type="button" class="chip idea-chip" data-value="' + escapeHtml(text) + '">' + escapeHtml(text) + '</button>';
+    }).join('');
+    var backups = loadIdeaBackups();
+    $('ideaRestoreBtn').disabled = !backups[state.activeType];
+  }
+
+  document.addEventListener('click', function(e){
+    var chip = e.target.closest('.idea-chip');
+    if(!chip) return;
+    $('ideaInput').value = chip.getAttribute('data-value');
+    $('ideaInput').focus();
+  });
 
   function readFieldValues(){
     var fw = currentFramework();
@@ -1035,6 +1093,94 @@
       throw new Error('API 回應 ' + resp.status + '：' + msg);
     }
   }
+
+  function buildFieldAiPrompt(fw, idea){
+    var fieldsDesc = fw.fields.map(function(f){
+      return '- ' + f.key + '（' + f.label + '）' + (f.placeholder ? '，例如：' + f.placeholder : '');
+    }).join('\n');
+    var keys = fw.fields.map(function(f){ return '"' + f.key + '":"..."'; }).join(',');
+    return '你是一位熟悉「' + fw.label + '」提示詞框架的顧問，這個框架包含以下欄位：\n' + fieldsDesc + '\n\n'
+      + '使用者的需求描述如下（可能很簡短、口語化）：\n「' + idea + '」\n\n'
+      + '請根據這個需求，把這句話拆解、擴寫成以上每個欄位的完整內容。每個欄位輸出 1-2 句繁體中文、具體可執行的文字（不要空泛的形容詞堆疊，不要條列符號），語氣像是使用者自己寫的提示詞草稿，而不是對使用者說話或加註解。若需求描述中沒提到的細節，請依常理合理補上一個具體版本，不要留空、也不要寫「請自行填寫」。\n\n'
+      + '請只輸出一個 JSON 物件，不要 markdown 圍欄、不要任何其他文字，鍵固定如下：\n{' + keys + '}';
+  }
+  function extractJsonObject(text){
+    var cleaned = text.replace(/```json|```/g, '');
+    var start = cleaned.indexOf('{');
+    var end = cleaned.lastIndexOf('}');
+    if(start < 0 || end <= start) throw new Error('模型輸出中找不到 JSON 物件：' + text.slice(0, 120));
+    return JSON.parse(cleaned.slice(start, end + 1));
+  }
+
+  $('ideaGenerateBtn').addEventListener('click', async function(){
+    var fw = currentFramework();
+    if(!fw.aiIdeaSupported) return;
+    var idea = $('ideaInput').value.trim();
+    var provider = $('aiProvider').value;
+    var model = $('aiModel').value.trim();
+    var apiKey = $('aiKey').value.trim();
+    var report = $('ideaReport');
+
+    if(!idea){ report.innerHTML = '<div class="bad">請先輸入一句話需求描述</div>'; return; }
+    if(!apiKey){ report.innerHTML = '<div class="bad">請先在下方「送給 AI 直接生成內容」填入 API 金鑰</div>'; return; }
+    if(!model){ report.innerHTML = '<div class="bad">請填入模型名稱</div>'; return; }
+    if(!isLatin1(apiKey)){ report.innerHTML = '<div class="bad">API 金鑰包含不可用的字元（可能複製時夾帶了多餘的符號、中文字或全形空白），請重新確認只貼上金鑰本身</div>'; return; }
+    if(!isLatin1(model)){ report.innerHTML = '<div class="bad">模型名稱包含不可用的字元，請確認只填入英數字模型 ID</div>'; return; }
+
+    var v = readFieldValues();
+    var hasContent = fw.fields.some(function(f){ return v[f.key]; });
+    var confirmMsg = '將呼叫 ' + AI_PROVIDERS[provider].label + ' 依你的需求描述拆解成「' + fw.label + '」的 ' + fw.fields.length + ' 個欄位'
+      + (hasContent ? '，並覆蓋目前已填寫的欄位（會先自動備份）' : '') + '。確定執行嗎？';
+    if(!confirm(confirmMsg)) return;
+
+    persistApiConfig();
+    var btn = this;
+    btn.disabled = true;
+    report.innerHTML = '<div class="ok">呼叫 ' + AI_PROVIDERS[provider].label + '（' + escapeHtml(model) + '）中，請稍候…</div>';
+    try{
+      var text = await callLLM(provider, model, apiKey, buildFieldAiPrompt(fw, idea), function(attempt, status, waitSec){
+        report.innerHTML = '<div class="warn">API 回應 ' + status + '（服務商暫時過載／限流），' + waitSec + ' 秒後自動重試（第 ' + attempt + '／2 次）…</div>';
+      });
+      var parsed = extractJsonObject(text);
+
+      saveIdeaBackup(state.activeType, Object.assign({}, currentFieldValues()));
+
+      var applied = [], skipped = [];
+      fw.fields.forEach(function(f){
+        var val = parsed[f.key];
+        if(typeof val === 'string' && val.trim().length > 1){
+          currentFieldValues()[f.key] = val.trim();
+          applied.push(f.label);
+        } else {
+          skipped.push(f.label);
+        }
+      });
+      persistState();
+      renderBuilder();
+      $('ideaInput').value = idea;
+      $('ideaReport').innerHTML = '<div class="ok">已拆解出 ' + applied.length + ' 個欄位內容，請逐一檢查是否符合你的實際需求後再使用。</div>'
+        + (skipped.length ? '<div class="warn">未產生：' + skipped.map(escapeHtml).join('、') + '</div>' : '');
+    }catch(err){
+      var msg;
+      if(err.name === 'TimeoutError') msg = '請求逾時（180秒），請重試或換模型';
+      else if(/ISO-8859-1|non.*code point/i.test(err.message || '')) msg = 'API 金鑰或模型名稱包含不可用的字元，請重新確認貼上的內容';
+      else msg = err.message;
+      $('ideaReport').innerHTML = '<div class="bad">拆解失敗：' + escapeHtml(msg) + '</div>';
+    }finally{
+      $('ideaGenerateBtn').disabled = false;
+    }
+  });
+
+  $('ideaRestoreBtn').addEventListener('click', function(){
+    var backups = loadIdeaBackups();
+    var backup = backups[state.activeType];
+    if(!backup){ alert('沒有可還原的備份。'); return; }
+    if(!confirm('確定要還原到 AI 拆解前的內容嗎？目前內容會被覆蓋。')) return;
+    state.fields[state.activeType] = backup;
+    persistState();
+    renderBuilder();
+    $('ideaReport').innerHTML = '<div class="ok">已還原 AI 拆解前的內容。</div>';
+  });
 
   $('aiGenerateBtn').addEventListener('click', async function(){
     var provider = $('aiProvider').value;
